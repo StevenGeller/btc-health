@@ -1,0 +1,139 @@
+# Prometheus alerting rules for Bitcoin Health Scorecard
+
+groups:
+  - name: btc_health_alerts
+    interval: 30s
+    rules:
+      # Overall health alerts
+      - alert: BitcoinHealthCritical
+        expr: btc_health_overall_score < 30
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Bitcoin network health is critical ({{ $value }})"
+          description: "Overall Bitcoin health score is {{ $value }}, indicating critical network conditions"
+      
+      - alert: BitcoinHealthWarning
+        expr: btc_health_overall_score < 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Bitcoin network health is degraded ({{ $value }})"
+          description: "Overall Bitcoin health score is {{ $value }}, indicating degraded network conditions"
+      
+      # Security alerts
+      - alert: HighStaleBlockRate
+        expr: btc_health_security_stale_rate > 0.01
+        for: 30m
+        labels:
+          severity: warning
+          pillar: security
+        annotations:
+          summary: "High stale block rate detected"
+          description: "Stale block rate is {{ $value }}, above normal threshold"
+      
+      - alert: LowHashprice
+        expr: btc_health_security_hashprice < 0.05
+        for: 1h
+        labels:
+          severity: warning
+          pillar: security
+        annotations:
+          summary: "Mining profitability critically low"
+          description: "Hashprice is ${{ $value }} USD/TH/day, mining may become unprofitable"
+      
+      # Decentralization alerts
+      - alert: HighMiningPoolConcentration
+        expr: btc_health_decent_pool_hhi > 0.15
+        for: 2h
+        labels:
+          severity: warning
+          pillar: decentralization
+        annotations:
+          summary: "Mining pool concentration is high"
+          description: "Pool HHI is {{ $value }}, indicating centralization risk"
+      
+      - alert: LowNodeDiversity
+        expr: btc_health_decent_client_entropy < 0.5
+        for: 6h
+        labels:
+          severity: info
+          pillar: decentralization
+        annotations:
+          summary: "Low client implementation diversity"
+          description: "Client entropy is {{ $value }}, network relies heavily on few implementations"
+      
+      # Throughput alerts
+      - alert: MempoolCongestion
+        expr: btc_health_throughput_mempool_vsize > 300000000
+        for: 30m
+        labels:
+          severity: warning
+          pillar: throughput
+        annotations:
+          summary: "Mempool is congested"
+          description: "Mempool size is {{ $value }} vbytes, transactions may be delayed"
+      
+      - alert: HighFeeSpike
+        expr: btc_health_fees_fast > 100
+        for: 10m
+        labels:
+          severity: info
+          pillar: throughput
+        annotations:
+          summary: "High transaction fees detected"
+          description: "Fast fee rate is {{ $value }} sat/vB"
+      
+      # Lightning alerts
+      - alert: LightningCapacityDrop
+        expr: rate(btc_health_lightning_capacity[1d]) < -0.1
+        for: 1h
+        labels:
+          severity: warning
+          pillar: lightning
+        annotations:
+          summary: "Lightning Network capacity dropping"
+          description: "Lightning capacity decreased by {{ $value }}% in last 24h"
+      
+      # System alerts
+      - alert: CollectorFailure
+        expr: btc_health_collector_consecutive_failures > 5
+        for: 5m
+        labels:
+          severity: critical
+          component: collector
+        annotations:
+          summary: "Data collector {{ $labels.collector }} is failing"
+          description: "Collector has failed {{ $value }} consecutive times"
+      
+      - alert: APIDown
+        expr: up{job="btc-health-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "Bitcoin Health API is down"
+          description: "API endpoint is not responding"
+      
+      - alert: DatabaseSize
+        expr: btc_health_database_size_bytes > 1073741824
+        for: 10m
+        labels:
+          severity: info
+          component: database
+        annotations:
+          summary: "Database size exceeds 1GB"
+          description: "Database size is {{ $value }} bytes, consider cleanup"
+      
+      - alert: StaleData
+        expr: time() - btc_health_last_update_timestamp > 3600
+        for: 10m
+        labels:
+          severity: warning
+          component: data
+        annotations:
+          summary: "Data is stale"
+          description: "No updates received for {{ $value }} seconds"

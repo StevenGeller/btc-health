@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Bitcoin Health Scorecard Data Collector every 20 minutes
+Requires=btc-health-collector.service
+
+[Timer]
+OnCalendar=*:0/20
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,21 @@
+[Unit]
+Description=Bitcoin Health Scorecard Data Collector
+After=network.target
+
+[Service]
+Type=oneshot
+User=bitcoin
+Group=bitcoin
+WorkingDirectory=/opt/btc-health
+Environment="PATH=/opt/btc-health/venv/bin"
+ExecStart=/opt/btc-health/scripts/run_collectors.sh all
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/btc-health/btc_health.db
+
+[Install]
+WantedBy=multi-user.target

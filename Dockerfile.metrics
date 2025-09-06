@@ -1,0 +1,32 @@
+# Dockerfile for Prometheus metrics exporter
+
+FROM python:3.9-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Copy requirements first
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir prometheus-client
+
+# Copy application code
+COPY app/ ./app/
+
+# Create non-root user
+RUN useradd -m -s /bin/bash btchealth && \
+    chown -R btchealth:btchealth /app
+
+USER btchealth
+
+# Expose metrics port
+EXPOSE 9090
+
+# Run the metrics exporter
+CMD ["python", "-m", "app.api.metrics_exporter"]

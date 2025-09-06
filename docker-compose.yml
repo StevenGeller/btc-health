@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # Bitcoin Health API
+  btc-health-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: btc-health-api
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./btc_health.db:/app/btc_health.db
+      - ./.env:/app/.env:ro
+    environment:
+      - DB_PATH=/app/btc_health.db
+      - API_HOST=0.0.0.0
+      - API_PORT=8080
+    restart: unless-stopped
+    networks:
+      - btc-health-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: btc-health-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./ssl:/etc/letsencrypt:ro
+    depends_on:
+      - btc-health-api
+    restart: unless-stopped
+    networks:
+      - btc-health-net
+
+  # Prometheus monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: btc-health-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+    networks:
+      - btc-health-net
+
+  # Grafana dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: btc-health-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana-dashboard.json:/var/lib/grafana/dashboards/dashboard.json:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - btc-health-net
+
+  # Metrics exporter
+  metrics-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile.metrics
+    container_name: btc-health-metrics
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./btc_health.db:/app/btc_health.db:ro
+      - ./.env:/app/.env:ro
+    environment:
+      - DB_PATH=/app/btc_health.db
+      - METRICS_PORT=9090
+    restart: unless-stopped
+    networks:
+      - btc-health-net
+
+  # Redis cache (optional)
+  redis:
+    image: redis:alpine
+    container_name: btc-health-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - btc-health-net
+
+networks:
+  btc-health-net:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  redis-data:

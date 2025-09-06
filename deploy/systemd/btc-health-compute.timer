@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Bitcoin Health Score Computation hourly
+Requires=btc-health-compute.service
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
