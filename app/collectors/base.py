@@ -36,6 +36,12 @@ class BaseCollector(ABC):
             'User-Agent': 'Bitcoin-Health-Scorecard/1.0'
         })
         
+        # Disable SSL verification for Bitnodes due to cert issues
+        if name.lower() == "bitnodes":
+            self.session.verify = False
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        
     def get(self, endpoint: str, params: Optional[Dict] = None, **kwargs) -> Optional[Dict]:
         """
         Make GET request with error handling and rate limiting.

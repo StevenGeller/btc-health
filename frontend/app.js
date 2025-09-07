@@ -1,6 +1,6 @@
 // Bitcoin Health Scorecard Frontend Application
 
-const API_BASE = 'http://localhost:8080';
+const API_BASE = window.location.protocol + '//' + window.location.hostname + '/api';
 let currentPeriod = 30;
 let historyChart = null;
 let sparklineChart = null;

@@ -12,8 +12,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 from app.storage.db import init_db, get_db
 from app.collectors.mempool import MempoolCollector
 from app.collectors.bitnodes import BitnodesCollector
-from app.collectors.coingecko import CoinGeckoCollector
 from app.collectors.blockchain_charts import BlockchainChartsCollector
+from app.collectors.bitcoin_core import BitcoinCoreCollector
+from app.collectors.binance import BinanceCollector
+from app.collectors.lnd import LNDCollector
 from app.compute.scores import ScoreCalculator
 from app.compute.formulas import MetricCalculator
 
@@ -49,8 +51,10 @@ def main():
     # Initialize collectors
     mempool_collector = MempoolCollector()
     bitnodes_collector = BitnodesCollector()
-    coingecko_collector = CoinGeckoCollector()
     blockchain_collector = BlockchainChartsCollector()
+    bitcoin_core_collector = BitcoinCoreCollector()
+    binance_collector = BinanceCollector()
+    lnd_collector = LNDCollector()
     
     try:
         logger.info("1. Collecting mempool data...")
@@ -67,18 +71,32 @@ def main():
         logger.error(f"   ✗ Failed to collect Bitnodes snapshot: {e}")
     
     try:
-        logger.info("3. Collecting price data...")
-        coingecko_collector.collect()
-        logger.info("   ✓ Price data collected")
-    except Exception as e:
-        logger.error(f"   ✗ Failed to collect price data: {e}")
-    
-    try:
-        logger.info("4. Collecting blockchain charts data...")
+        logger.info("3. Collecting blockchain charts data...")
         blockchain_collector.collect()
         logger.info("   ✓ Blockchain charts data collected")
     except Exception as e:
         logger.error(f"   ✗ Failed to collect blockchain charts data: {e}")
+    
+    try:
+        logger.info("4. Collecting Bitcoin Core data (via Tor)...")
+        bitcoin_core_collector.collect()
+        logger.info("   ✓ Bitcoin Core data collected")
+    except Exception as e:
+        logger.error(f"   ✗ Failed to collect Bitcoin Core data: {e}")
+    
+    try:
+        logger.info("5. Collecting Binance price data...")
+        binance_collector.collect()
+        logger.info("   ✓ Binance price data collected")
+    except Exception as e:
+        logger.error(f"   ✗ Failed to collect Binance data: {e}")
+    
+    try:
+        logger.info("6. Collecting Lightning Network data (LND)...")
+        lnd_collector.collect()
+        logger.info("   ✓ Lightning Network data collected")
+    except Exception as e:
+        logger.error(f"   ✗ Failed to collect LND data: {e}")
     
     # Compute metrics first
     logger.info("\nComputing metrics...")

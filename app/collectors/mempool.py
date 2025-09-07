@@ -67,12 +67,19 @@ class MempoolCollector(BaseCollector):
             ts = self.get_timestamp()
             pool_data = []
             
+            # Calculate total blocks to compute share percentage
+            total_blocks = sum(pool.get('blockCount', 0) for pool in data['pools'])
+            
             for pool in data['pools']:
+                block_count = pool.get('blockCount', 0)
+                # Calculate share as percentage (0-100)
+                share = (block_count / total_blocks * 100) if total_blocks > 0 else 0
+                
                 pool_data.append((
                     ts,
                     pool.get('name', 'Unknown'),
-                    pool.get('share', 0),
-                    pool.get('blockCount', 0)
+                    share,
+                    block_count
                 ))
             
             if pool_data:
@@ -87,17 +94,28 @@ class MempoolCollector(BaseCollector):
     def collect_block_rewards(self):
         """Collect block reward statistics."""
         # Get recent blocks to calculate rewards
-        data = self.get('/v1/blocks/0')  # Get latest blocks
+        data = self.get('/v1/blocks')  # Get latest blocks (not genesis!)
         if data and isinstance(data, list) and len(data) > 0:
             # Calculate daily averages
             day = self.get_date_string()
             
-            total_fees = sum(block.get('extras', {}).get('totalFees', 0) for block in data[:144])  # ~1 day
-            block_count = min(len(data), 144)
+            ts = self.get_timestamp()
+            # Process recent blocks for fees
+            blocks_to_process = min(len(data), 15)  # Use recent blocks
+            total_fees = 0
+            total_reward = 0
+            
+            for block in data[:blocks_to_process]:
+                extras = block.get('extras', {})
+                total_fees += extras.get('totalFees', 0)
+                total_reward += extras.get('reward', 0)
+            
+            block_count = blocks_to_process
             
             if block_count > 0:
                 avg_fee = total_fees / block_count / 1e8  # Convert to BTC
-                subsidy = 6.25  # Current subsidy (will need updating after halving)
+                avg_reward = total_reward / block_count / 1e8
+                subsidy = 3.125  # Current subsidy after April 2024 halving
                 
                 store_json_data('raw_block_rewards', {
                     'day': day,
@@ -106,6 +124,12 @@ class MempoolCollector(BaseCollector):
                     'blocks': block_count,
                     'avg_fee_per_block': avg_fee
                 })
+                
+                # Store as metrics too
+                from app.storage.db import upsert_metric
+                upsert_metric('fees.avg_block_reward', avg_fee, ts, 'BTC')
+                upsert_metric('security.block_reward', avg_reward, ts, 'BTC')
+                
                 logger.info(f"Collected block rewards: {avg_fee:.4f} BTC avg fee per block")
     
     def collect_lightning_stats(self):

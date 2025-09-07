@@ -116,7 +116,7 @@ class MetricCalculator:
         
         pools = execute_query(
             """
-            SELECT pool, share FROM raw_pool_shares
+            SELECT ts, pool, share FROM raw_pool_shares
             WHERE ts >= ?
             ORDER BY ts DESC, share DESC
             """,

@@ -45,3 +45,10 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+# Test files with credentials
+test_umbrel.py
+test_tor_umbrel.py
+
+# Data directory
+data/
